@@ -3,7 +3,7 @@ import telebot
 import ollama
 from datetime import datetime, date
 import time
-from prompts import *
+from prompts import EXTRACT_TITLE, SUMMARIZATION
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 daily_history = []
@@ -13,10 +13,15 @@ daily_data = {
     'report': {}
 }
 
-
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(message, "Бот для сводок проектов. Используйте:\n#статус <Название проекта>: <что требуется сделать>\n#отчет <Название проекта>: <что сделано>")
+
+@bot.message_handler(commands=['summary'])
+def summary(message):
+    for status in daily_data['status']:
+        bot.reply_to(message, 'Начинаю подведение итогов')
+        bot.reply_to(message, ollama.generate(model=MODEL, system = SUMMARIZATION, think = False, prompt=status + "\n" + daily_data['status'][status] + "\n" + "\n\n".join(daily_data['report'][status])).response)
 
 @bot.message_handler(content_types=['text'])
 def handle_message(message):
@@ -47,9 +52,4 @@ def process_report(text, message):
 def extract_project_name(text):
     return ollama.generate(model = MODEL, system = EXTRACT_TITLE, prompt=text, think=False, options={'temperature': 0.0, 'num_predict': 30}).response
 
-
-@bot.message_handler(commands=['summary'])
-def summary_statuses(data):
-    for status in data['status']:
-        return ollama.generate(model=MODEL, system = SUMMARIZATION, prompt=str(status) + "\n" + "\n\n".join(data['report'][status])).response
-
+bot.infinity_polling()
