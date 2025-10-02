@@ -3,7 +3,7 @@ import telebot
 import ollama
 from datetime import datetime, date
 import time
-from prompts import EXTRACT_TITLE, SUMMARIZATION
+from prompts import EXTRACT_TITLE, SUMMARIZATION, STATUS
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 daily_history = []
@@ -17,10 +17,18 @@ daily_data = {
 def start(message):
     bot.reply_to(message, "Бот для сводок проектов. Используйте:\n#статус <Название проекта>: <что требуется сделать>\n#отчет <Название проекта>: <что сделано>")
 
+@bot.message_handler(commands=['status_info'])
+def short_status(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, 'Собираю короткую сводку по статусам')
+    for status in daily_data['status']:
+        bot.reply_to(message, ollama.generate(model=MODEL, system=STATUS, think = False, prompt=status + daily_data['status'][status]).response)
+
 @bot.message_handler(commands=['summary'])
 def summary(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, 'Начинаю подведение итогов')
     for status in daily_data['status']:
-        bot.reply_to(message, 'Начинаю подведение итогов')
         bot.reply_to(message, ollama.generate(model=MODEL, system = SUMMARIZATION, think = False, prompt=status + "\n" + daily_data['status'][status] + "\n" + "\n\n".join(daily_data['report'][status])).response)
 
 @bot.message_handler(content_types=['text'])
